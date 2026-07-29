@@ -2,17 +2,9 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-module cheriot_rmw_filter
-  import cheriot_pkg::*;
-#(
+module cheriot_rmw_filter #(
   // TL-UL address type
-  parameter type   addr_t              = logic [top_pkg::TL_AW-1:0],
-  parameter addr_t MainSramBaseAddr    = 'h0,
-  parameter addr_t MainSramTopAddr     = 'h0,
-  parameter addr_t NvmBaseAddr         = 'h0,
-  parameter addr_t NvmTopAddr          = 'h0,
-  parameter addr_t MetaMainSramTagBase = 'h0,
-  parameter addr_t MetaNvmTagBase      = 'h0
+  parameter type addr_t = logic [top_pkg::TL_AW-1:0]
 ) (
   input  logic clk_i,
   input  logic rst_ni,
@@ -20,6 +12,7 @@ module cheriot_rmw_filter
   // Host port
   input  tlul_pkg::tl_h2d_t tl_h_i,
   input  logic              tag_h_i,
+  input  logic  [4:0]       bit_sel_h_i,
   output tlul_pkg::tl_d2h_t tl_h_o,
   output logic              tag_h_o,
 
@@ -48,12 +41,6 @@ module cheriot_rmw_filter
     WriteBackAck = 2'h3
   } bit_rmw_state_e;
 
-  typedef struct packed {
-    logic [31:8] meta_word;
-    logic  [7:3] bit_sel;
-    logic  [2:0] rsvd;
-  } meta_addr_t;
-
 
   /////////////
   // Signals //
@@ -74,14 +61,12 @@ module cheriot_rmw_filter
   // We need to keep track of ongoing reads
   logic is_read_d, is_read_q;
 
-  // We need to store the address of the access
-  meta_addr_t meta_addr_d, meta_addr_q;
+  // We need to store the metadata address and bit index of the access
+  addr_t      meta_addr_q;
+  logic [4:0] bit_sel_q;
 
-  // Remapped address
-  meta_addr_t addr_sel, addr_stem, addr_remap;
-
-  // Unused address signals
-  logic unused_addr;
+  // Metadata address of the operation currently driven towards the device
+  addr_t addr_sel;
 
   // We need to store whether a capability write had a valid tag bit
   logic tag_q;
@@ -103,10 +88,8 @@ module cheriot_rmw_filter
   // Helper Signals //
   ////////////////////
 
-  // We assign the address to an internally defined packed struct to gain access to its fields.
-  assign meta_addr_d     = tl_h_i.a_address;
   // We can skip the write back operation if the tag to be written matches the current state
-  assign skip_write_back = tl_d_i.d_data[meta_addr_q.bit_sel] == tag_q;
+  assign skip_write_back = tl_d_i.d_data[bit_sel_q] == tag_q;
 
 
   /////////////////
@@ -192,10 +175,12 @@ module cheriot_rmw_filter
   always_ff @(posedge clk_i or negedge rst_ni) begin : proc_request_meta_store
     if(!rst_ni) begin
       meta_addr_q <= '0;
+      bit_sel_q   <= '0;
       tag_q       <= 1'b0;
     end else begin
       if (tl_h_i.a_valid && tl_h_o.a_ready) begin
-        meta_addr_q <= meta_addr_d;
+        meta_addr_q <= tl_h_i.a_address;
+        bit_sel_q   <= bit_sel_h_i;
         tag_q       <= tag_h_i;
       end
     end
@@ -266,7 +251,7 @@ module cheriot_rmw_filter
       // We are in pass-through case and a request arrives -> we forward it
       // but we ensure we divide the address by 64 as one request can track 32
       // capabilities or 64 words.
-      tl_d_o.a_address       = addr_remap;
+      tl_d_o.a_address       = addr_sel;
       // Recalculate the command integrity as we have modified the address
       tl_d_o.a_user.cmd_intg = tlul_pkg::get_cmd_intg(tl_d_o);
       tl_d_o.a_valid         = tl_h_i.a_valid;
@@ -277,9 +262,10 @@ module cheriot_rmw_filter
     // capability tag is set.
     end else if(emit_r_req) begin
       tl_d_o                  = tlul_pkg::TL_H2D_DEFAULT;
-      tl_d_o.a_address        = addr_remap;
+      tl_d_o.a_address        = addr_sel;
       tl_d_o.a_opcode         = tlul_pkg::Get;
       tl_d_o.a_size           = 'd2;
+      tl_d_o.a_mask           = '1;
       tl_d_o.a_user.cmd_intg  = tlul_pkg::get_cmd_intg(tl_d_o);
       tl_d_o.a_user.data_intg = tlul_pkg::get_data_intg(tl_d_o.a_data);
       tl_d_o.a_valid          = tl_h_i.a_valid;
@@ -289,12 +275,12 @@ module cheriot_rmw_filter
     // don't have to handshake the upstream host request interface.
     end else if(emit_w_req) begin
       tl_d_o                             = tlul_pkg::TL_H2D_DEFAULT;
-      tl_d_o.a_address                   = addr_remap;
+      tl_d_o.a_address                   = addr_sel;
       tl_d_o.a_opcode                    = tlul_pkg::PutFullData;
       tl_d_o.a_size                      = 'd2;
       tl_d_o.a_mask                      = '1;
       tl_d_o.a_data                      = word_q;
-      tl_d_o.a_data[meta_addr_q.bit_sel] = tag_q;
+      tl_d_o.a_data[bit_sel_q]           = tag_q;
       tl_d_o.a_user.cmd_intg             = tlul_pkg::get_cmd_intg(tl_d_o);
       tl_d_o.a_user.data_intg            = tlul_pkg::get_data_intg(tl_d_o.a_data);
       tl_d_o.a_valid                     = 1'b1;
@@ -305,7 +291,7 @@ module cheriot_rmw_filter
     if(is_read_q) begin
       tl_h_o.d_valid  = tl_d_i.d_valid;
       tl_d_o.d_ready  = tl_h_i.d_ready;
-      tag_h_o         = tl_d_i.d_data[meta_addr_q.bit_sel] && !tl_d_i.d_error;
+      tag_h_o         = tl_d_i.d_data[bit_sel_q] && !tl_d_i.d_error;
 
     // We have translated a write request into a read request to inquire the state of the
     // tag word. Checking the capability bit, we notice that we don't have to perform an update.
@@ -339,6 +325,7 @@ module cheriot_rmw_filter
   assign rsp_intg = tlul_pkg::extract_d2h_rsp_intg(tl_d_i);
 
   // Check the bitmap response integrity
+  // SEC_CM: BUS.INTEGRITY
   prim_secded_inv_64_57_dec u_prim_secded_inv_64_57_dec_rsp (
     .data_i    ({tl_d_i.d_user.rsp_intg, {RspIntgPadding{1'b0}}, rsp_intg}),
     .data_o    (/*Not Connected*/),
@@ -350,6 +337,7 @@ module cheriot_rmw_filter
   assign rsp_intg_error_o = tl_d_i.d_valid && tl_d_o.d_ready && (|rsp_intg_error);
 
   // Check the device response data integrity
+  // SEC_CM: BUS.INTEGRITY
   prim_secded_inv_39_32_dec u_prim_secded_inv_39_32_dec_rsp_data (
     .data_i    ({tl_d_i.d_user.data_intg, tl_d_i.d_data}),
     .data_o    (/*Not Connected*/),
@@ -361,34 +349,19 @@ module cheriot_rmw_filter
   assign data_intg_error_o = tl_d_i.d_valid && tl_d_o.d_ready && (|rsp_data_intg_error);
 
 
-  ///////////////////////
-  // Address Remapping //
-  ///////////////////////
+  ////////////////////////
+  // Metadata Address   //
+  ////////////////////////
 
-  always_comb begin: proc_address_remap
-    // defaults (only happen if something goes wrong, we map to address 0 which should not be
-    // mapped to anything)
-    addr_sel   = '0;
-    addr_stem  = '0;
-    addr_remap = '0;
-
+  always_comb begin: proc_addr_sel
     // select either the address of the currently active host request or the stored value
+    addr_sel = '0;
+
     if(forward_r_req || emit_r_req) begin
-      addr_sel = meta_addr_d;
+      addr_sel = tl_h_i.a_address;
     end else if(emit_w_req) begin
       addr_sel = meta_addr_q;
     end
-
-    // remap address
-    if(addr_sel >= MainSramBaseAddr && addr_sel < MainSramTopAddr) begin
-      addr_stem  = addr_sel - MainSramBaseAddr;
-      addr_remap = MetaMainSramTagBase + (addr_stem.meta_word << 32'd2);
-    end else if(addr_sel >= NvmBaseAddr && addr_sel < NvmTopAddr) begin
-      addr_stem  = addr_sel - NvmBaseAddr;
-      addr_remap = MetaNvmTagBase + (addr_stem.meta_word << 32'd2);
-    end
   end
-
-  assign unused_addr = ^{addr_stem.bit_sel, addr_stem.rsvd};
 
 endmodule

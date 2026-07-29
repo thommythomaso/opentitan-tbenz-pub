@@ -699,6 +699,7 @@ module top_earlgrey #(
   tlul_pkg::tl_h2d_t       cheriot_meta_sram_tl_req;
   tlul_pkg::tl_d2h_t       cheriot_meta_sram_tl_rsp;
   logic       cheriot_cored_tag_d2h;
+  prim_mubi_pkg::mubi4_t       rv_core_ibex_cheriot_ena;
   tlul_pkg::tl_h2d_t       main_tl_rv_core_ibex__corei_req;
   tlul_pkg::tl_d2h_t       main_tl_rv_core_ibex__corei_rsp;
   tlul_pkg::tl_h2d_t       main_tl_cheriot__cored_req;
@@ -755,6 +756,8 @@ module top_earlgrey #(
   tlul_pkg::tl_d2h_t       sram_ctrl_main_ram_tl_rsp;
   tlul_pkg::tl_h2d_t       sram_ctrl_meta_regs_tl_req;
   tlul_pkg::tl_d2h_t       sram_ctrl_meta_regs_tl_rsp;
+  tlul_pkg::tl_h2d_t       cheriot_regs_tl_d_req;
+  tlul_pkg::tl_d2h_t       cheriot_regs_tl_d_rsp;
   tlul_pkg::tl_h2d_t       cheriot_revbm_tl_d_req;
   tlul_pkg::tl_d2h_t       cheriot_revbm_tl_d_rsp;
   tlul_pkg::tl_h2d_t       uart0_tl_req;
@@ -2545,7 +2548,7 @@ module top_earlgrey #(
 
     // Inter-module signals
     .rst_cpu_n_o(),
-    .cheriot_ena_o(),
+    .cheriot_ena_o(rv_core_ibex_cheriot_ena),
     .cored_tl_h_o(rv_core_ibex_cored_tl_h_req),
     .cored_tl_h_i(rv_core_ibex_cored_tl_h_rsp),
     .cored_tag_h2d_o(rv_core_ibex_cored_tag_h2d),
@@ -2581,6 +2584,8 @@ module top_earlgrey #(
   );
 
   cheriot #(
+    .AlertAsyncOn(alert_handler_reg_pkg::AsyncOn[63]),
+    .AlertSkewCycles(top_pkg::AlertSkewCycles),
     .MainSramBaseAddr(CheriotMainSramBaseAddr),
     .MainSramTopAddr(CheriotMainSramTopAddr),
     .NvmBaseAddr(CheriotNvmBaseAddr),
@@ -2591,9 +2596,12 @@ module top_earlgrey #(
     .clk_i(clkmgr_aon_clocks_i.clk_main_infra),
     .rst_ni(rstmgr_aon_resets_i.rst_lc_n[rstmgr_pkg::DomainMainSel]),
 
+    // alert_handler[63]: fatal_fault
+    .alert_tx_o(alert_tx[63]),
+    .alert_rx_i(alert_rx[63]),
 
     // Inter-module signals
-    .cheriot_ena_i(prim_mubi_pkg::MuBi4False),
+    .cheriot_ena_i(rv_core_ibex_cheriot_ena),
     .cored_tl_d_i(rv_core_ibex_cored_tl_h_req),
     .cored_tl_d_o(rv_core_ibex_cored_tl_h_rsp),
     .cored_tag_h2d_i(rv_core_ibex_cored_tag_h2d),
@@ -2604,12 +2612,14 @@ module top_earlgrey #(
     .meta_sram_tl_i(cheriot_meta_sram_tl_rsp),
     .cored_tl_h_o(main_tl_cheriot__cored_req),
     .cored_tl_h_i(main_tl_cheriot__cored_rsp),
+    .regs_tl_d_i(cheriot_regs_tl_d_req),
+    .regs_tl_d_o(cheriot_regs_tl_d_rsp),
     .revbm_tl_d_i(cheriot_revbm_tl_d_req),
     .revbm_tl_d_o(cheriot_revbm_tl_d_rsp)
   );
 
   sram_ctrl #(
-    .AlertAsyncOn(alert_handler_reg_pkg::AsyncOn[63]),
+    .AlertAsyncOn(alert_handler_reg_pkg::AsyncOn[64]),
     .AlertSkewCycles(top_pkg::AlertSkewCycles),
     .RndCnstSramKey(RndCnstSramCtrlMetaSramKey),
     .RndCnstSramNonce(RndCnstSramCtrlMetaSramNonce),
@@ -2630,9 +2640,9 @@ module top_earlgrey #(
     .rst_ni(rstmgr_aon_resets_i.rst_lc_n[rstmgr_pkg::DomainMainSel]),
     .rst_otp_ni(rstmgr_aon_resets_i.rst_lc_io_div4_n[rstmgr_pkg::DomainMainSel]),
 
-    // alert_handler[63]: fatal_error
-    .alert_tx_o(alert_tx[63]),
-    .alert_rx_i(alert_rx[63]),
+    // alert_handler[64]: fatal_error
+    .alert_tx_o(alert_tx[64]),
+    .alert_rx_i(alert_rx[64]),
 
     // RACL policies
     .racl_policy_sel_ranges_ram_i('{top_racl_pkg::RACL_RANGE_T_DEFAULT}),
@@ -2936,6 +2946,10 @@ module top_earlgrey #(
     // port: tl_sram_ctrl_meta__regs
     .tl_sram_ctrl_meta__regs_o(sram_ctrl_meta_regs_tl_req),
     .tl_sram_ctrl_meta__regs_i(sram_ctrl_meta_regs_tl_rsp),
+
+    // port: tl_cheriot__regs
+    .tl_cheriot__regs_o(cheriot_regs_tl_d_req),
+    .tl_cheriot__regs_i(cheriot_regs_tl_d_rsp),
 
     // port: tl_cheriot__revbm
     .tl_cheriot__revbm_o(cheriot_revbm_tl_d_req),

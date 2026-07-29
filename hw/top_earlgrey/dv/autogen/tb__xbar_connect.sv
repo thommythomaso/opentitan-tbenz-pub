@@ -65,6 +65,7 @@ tl_if rv_core_ibex__cfg_tl_if(clk_main, rst_n);
 tl_if sram_ctrl_main__regs_tl_if(clk_main, rst_n);
 tl_if sram_ctrl_main__ram_tl_if(clk_main, rst_n);
 tl_if sram_ctrl_meta__regs_tl_if(clk_main, rst_n);
+tl_if cheriot__regs_tl_if(clk_main, rst_n);
 tl_if cheriot__revbm_tl_if(clk_main, rst_n);
 tl_if uart0_tl_if(clk_io_div4, rst_n);
 tl_if uart1_tl_if(clk_io_div4, rst_n);
@@ -147,6 +148,7 @@ initial begin
     `DRIVE_CHIP_TL_DEVICE_IF(sram_ctrl_main__regs, sram_ctrl_main, regs_tl)
     `DRIVE_CHIP_TL_DEVICE_IF(sram_ctrl_main__ram, sram_ctrl_main, ram_tl)
     `DRIVE_CHIP_TL_DEVICE_IF(sram_ctrl_meta__regs, sram_ctrl_meta, regs_tl)
+    `DRIVE_CHIP_TL_DEVICE_IF(cheriot__regs, cheriot, regs_tl_d)
     `DRIVE_CHIP_TL_DEVICE_IF(cheriot__revbm, cheriot, revbm_tl_d)
     `DRIVE_CHIP_TL_DEVICE_IF(uart0, uart0, tl)
     `DRIVE_CHIP_TL_DEVICE_IF(uart1, uart1, tl)

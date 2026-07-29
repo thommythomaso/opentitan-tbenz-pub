@@ -56,4 +56,5 @@ initial force dut.rst_spi_host1_ni = rst_n;
 `CONNECT_TL_DEVICE_IF(sram_ctrl_main__regs, dut, clk_main_i, rst_n)
 `CONNECT_TL_DEVICE_IF(sram_ctrl_main__ram, dut, clk_main_i, rst_n)
 `CONNECT_TL_DEVICE_IF(sram_ctrl_meta__regs, dut, clk_main_i, rst_n)
+`CONNECT_TL_DEVICE_IF(cheriot__regs, dut, clk_main_i, rst_n)
 `CONNECT_TL_DEVICE_IF(cheriot__revbm, dut, clk_main_i, rst_n)

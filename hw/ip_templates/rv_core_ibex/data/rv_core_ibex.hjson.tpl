@@ -772,6 +772,13 @@
     { name: "ICACHE.MEM.INTEGRITY"
       desc: "ICache memory integrity checking."
     }
+% if cheriot_available:
+    { name: "CHERIOT_SWITCH.FSM.SPARSE"
+      desc: '''
+        The write-once ePMP/CHERIoT execution mode switch FSM is sparsely encoded.
+      '''
+    }
+% endif
   ]
 
   regwidth: "32",

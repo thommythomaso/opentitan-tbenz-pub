@@ -292,7 +292,6 @@ module ${module_instance_name}
 % if cheriot_available:
   // CHERIoT signals
   logic                  cheriot_switch_error;
-  logic                  unused_cheriot;
 
 % endif
   // The following intermediate signals are created to aid in simulations.
@@ -1115,7 +1114,11 @@ module ${module_instance_name}
   assign alert_events[0] = mubi4_test_true_loose(mubi4_t'(reg2hw.sw_fatal_err.q));
   assign alert_events[1] = mubi4_test_true_loose(mubi4_t'(reg2hw.sw_recov_err.q));
   assign alert_events[2] = cfg_reg_intg_err | cfg_reg_intg_err_shadow |
+% if cheriot_available:
+                           fatal_intg_err | fatal_core_err | cheriot_switch_error;
+% else:
                            fatal_intg_err | fatal_core_err;
+% endif
   assign alert_events[3] = recov_core_err;
 
   logic unused_alert_acks;
@@ -1210,6 +1213,7 @@ module ${module_instance_name}
   // CHERIoT switch
   ////////////////////
   if (BaseIsa == ibex_pkg::BaseIsaRV32IorCHERIoT) begin : gen_cheriot_switch
+    // SEC_CM: CHERIOT_SWITCH.FSM.SPARSE
     cheriot_switch u_cheriot_switch (
       .clk_i,
       .rst_ni,
@@ -1219,12 +1223,11 @@ module ${module_instance_name}
       .ena_o        (cheriot_ena_o),
       .error_o      (cheriot_switch_error)
     );
-    // For now, tie off all signals
-    assign unused_cheriot = ^cheriot_switch_error;
 
   end else begin : gen_no_cheriot_switch
-    assign cheriot_ena_o        = prim_mubi_pkg::MuBi4False;
+    logic unused_cheriot;
     assign cheriot_switch_error = 1'b0;
+    assign cheriot_ena_o        = prim_mubi_pkg::MuBi4False;
     assign unused_cheriot       = ^{cheriot_switch_error,
                                     reg2hw.cheriot_ena,
                                     reg2hw.cheriot_lock

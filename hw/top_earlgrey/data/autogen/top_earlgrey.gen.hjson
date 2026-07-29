@@ -607,7 +607,7 @@
             sram_ctrl_meta.regs
             rom_ctrl.regs
             rv_core_ibex
-            cheriot.revbm
+            cheriot.regs
           ]
         }
       ]
@@ -9673,6 +9673,9 @@
           width: 1
           default: prim_mubi_pkg::MuBi4False
           inst_name: rv_core_ibex
+          end_idx: -1
+          top_type: broadcast
+          top_signame: rv_core_ibex_cheriot_ena
           index: -1
         }
         {
@@ -10080,6 +10083,10 @@
       }
       base_addrs:
       {
+        regs:
+        {
+          hart: 0x411B0000
+        }
         revbm:
         {
           hart: 0x11000000
@@ -10161,6 +10168,8 @@
           width: 1
           default: prim_mubi_pkg::MuBi4False
           inst_name: cheriot
+          domain: Main
+          top_signame: rv_core_ibex_cheriot_ena
           index: -1
         }
         {
@@ -10246,6 +10255,20 @@
           default: ""
           domain: Main
           top_signame: main_tl_cheriot__cored
+          index: -1
+        }
+        {
+          name: regs_tl_d
+          struct: tl
+          package: tlul_pkg
+          type: req_rsp
+          act: rsp
+          width: 1
+          inst_name: cheriot
+          default: ""
+          end_idx: -1
+          top_type: one-to-one
+          top_signame: cheriot_regs_tl_d
           index: -1
         }
         {
@@ -11078,6 +11101,10 @@
       [
         rv_core_ibex.cored_tag_d2h
       ]
+      rv_core_ibex.cheriot_ena:
+      [
+        cheriot.cheriot_ena
+      ]
       pwrmgr_aon.wakeups:
       [
         sysrst_ctrl_aon.wkup_req
@@ -11203,6 +11230,10 @@
       sram_ctrl_meta.regs_tl:
       [
         main.tl_sram_ctrl_meta__regs
+      ]
+      cheriot.regs_tl_d:
+      [
+        main.tl_cheriot__regs
       ]
       cheriot.revbm_tl_d:
       [
@@ -11472,6 +11503,7 @@
           sram_ctrl_main.regs
           rv_core_ibex.cfg
           sram_ctrl_meta.regs
+          cheriot.regs
           cheriot.revbm
         ]
         rv_dm.sba:
@@ -11501,6 +11533,7 @@
           sram_ctrl_main.regs
           rv_core_ibex.cfg
           sram_ctrl_meta.regs
+          cheriot.regs
           cheriot.revbm
         ]
       }
@@ -12102,6 +12135,28 @@
           pipeline: true
         }
         {
+          name: cheriot.regs
+          type: device
+          clock: clk_main_i
+          reset: rst_main_ni
+          req_fifo_pass: false
+          rsp_fifo_pass: false
+          inst_type: cheriot
+          addr_range:
+          [
+            {
+              base_addrs:
+              {
+                hart: 0x411b0000
+              }
+              size_byte: 0x4
+            }
+          ]
+          xbar: false
+          stub: false
+          pipeline: true
+        }
+        {
           name: cheriot.revbm
           type: device
           clock: clk_main_i
@@ -12498,6 +12553,19 @@
           default: ""
           domain: Main
           top_signame: sram_ctrl_meta_regs_tl
+          index: -1
+        }
+        {
+          name: tl_cheriot__regs
+          struct: tl
+          package: tlul_pkg
+          type: req_rsp
+          act: req
+          inst_name: main
+          width: 1
+          default: ""
+          domain: Main
+          top_signame: cheriot_regs_tl_d
           index: -1
         }
         {
@@ -16821,6 +16889,17 @@
       lpg_idx: 17
     }
     {
+      name: cheriot_fatal_fault
+      width: 1
+      type: alert
+      async: "1"
+      handler: alert_handler
+      module_name: cheriot
+      desc: cheriot fatal_fault alert
+      lpg_name: infra_lc_Main
+      lpg_idx: 17
+    }
+    {
       name: sram_ctrl_meta_fatal_error
       width: 1
       type: alert
@@ -19740,6 +19819,7 @@
     sram_ctrl_main
     rom_ctrl
     rv_core_ibex
+    cheriot
     sram_ctrl_meta
   ]
   alert_connections:
@@ -20158,14 +20238,24 @@
         alert_handler[62]: recov_hw_err
       ]
     }
-    module_sram_ctrl_meta:
+    module_cheriot:
     {
       tx_expr: alert_tx[63]
       rx_expr: alert_rx[63]
       async_expr: alert_handler_reg_pkg::AsyncOn[63]
       comments:
       [
-        alert_handler[63]: fatal_error
+        alert_handler[63]: fatal_fault
+      ]
+    }
+    module_sram_ctrl_meta:
+    {
+      tx_expr: alert_tx[64]
+      rx_expr: alert_rx[64]
+      async_expr: alert_handler_reg_pkg::AsyncOn[64]
+      comments:
+      [
+        alert_handler[64]: fatal_error
       ]
     }
   }
@@ -20174,11 +20264,11 @@
     alert_handler:
     {
       domain: Main
-      count_tot: 64
+      count_tot: 65
       count_pd:
       {
         Aon: 11
-        Main: 53
+        Main: 54
       }
       connect_pd:
       {
@@ -26529,6 +26619,9 @@
         width: 1
         default: prim_mubi_pkg::MuBi4False
         inst_name: rv_core_ibex
+        end_idx: -1
+        top_type: broadcast
+        top_signame: rv_core_ibex_cheriot_ena
         index: -1
       }
       {
@@ -26909,6 +27002,8 @@
         width: 1
         default: prim_mubi_pkg::MuBi4False
         inst_name: cheriot
+        domain: Main
+        top_signame: rv_core_ibex_cheriot_ena
         index: -1
       }
       {
@@ -26994,6 +27089,20 @@
         default: ""
         domain: Main
         top_signame: main_tl_cheriot__cored
+        index: -1
+      }
+      {
+        name: regs_tl_d
+        struct: tl
+        package: tlul_pkg
+        type: req_rsp
+        act: rsp
+        width: 1
+        inst_name: cheriot
+        default: ""
+        end_idx: -1
+        top_type: one-to-one
+        top_signame: cheriot_regs_tl_d
         index: -1
       }
       {
@@ -27535,6 +27644,19 @@
         default: ""
         domain: Main
         top_signame: sram_ctrl_meta_regs_tl
+        index: -1
+      }
+      {
+        name: tl_cheriot__regs
+        struct: tl
+        package: tlul_pkg
+        type: req_rsp
+        act: req
+        inst_name: main
+        width: 1
+        default: ""
+        domain: Main
+        top_signame: cheriot_regs_tl_d
         index: -1
       }
       {
@@ -33024,6 +33146,18 @@
         default: 1'b0
       }
       {
+        package: prim_mubi_pkg
+        struct: mubi4
+        domain: Main
+        signame: rv_core_ibex_cheriot_ena
+        width: 1
+        type: uni
+        end_idx: -1
+        act: req
+        suffix: ""
+        default: prim_mubi_pkg::MuBi4False
+      }
+      {
         package: ""
         struct: logic
         domain: Aon
@@ -33712,6 +33846,30 @@
         struct: tl_d2h
         domain: Main
         signame: sram_ctrl_meta_regs_tl_rsp
+        width: 1
+        type: req_rsp
+        end_idx: -1
+        act: rsp
+        suffix: rsp
+        default: ""
+      }
+      {
+        package: tlul_pkg
+        struct: tl_h2d
+        domain: Main
+        signame: cheriot_regs_tl_d_req
+        width: 1
+        type: req_rsp
+        end_idx: -1
+        act: rsp
+        suffix: req
+        default: tlul_pkg::TL_H2D_DEFAULT
+      }
+      {
+        package: tlul_pkg
+        struct: tl_d2h
+        domain: Main
+        signame: cheriot_regs_tl_d_rsp
         width: 1
         type: req_rsp
         end_idx: -1

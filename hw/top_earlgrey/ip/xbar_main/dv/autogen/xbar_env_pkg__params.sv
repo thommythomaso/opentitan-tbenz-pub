@@ -83,6 +83,9 @@ tl_device_t xbar_devices[$] = '{
     '{"sram_ctrl_meta__regs", '{
         '{32'h411d0000, 32'h411d003f}
     }},
+    '{"cheriot__regs", '{
+        '{32'h411b0000, 32'h411b0003}
+    }},
     '{"cheriot__revbm", '{
         '{32'h11000000, 32'h110007ff}
 }}};
@@ -121,6 +124,7 @@ tl_host_t xbar_hosts[$] = '{
         "sram_ctrl_main__regs",
         "rv_core_ibex__cfg",
         "sram_ctrl_meta__regs",
+        "cheriot__regs",
         "cheriot__revbm"}}
     ,
     '{"rv_dm__sba", 2, '{
@@ -149,5 +153,6 @@ tl_host_t xbar_hosts[$] = '{
         "sram_ctrl_main__regs",
         "rv_core_ibex__cfg",
         "sram_ctrl_meta__regs",
+        "cheriot__regs",
         "cheriot__revbm"}}
 };

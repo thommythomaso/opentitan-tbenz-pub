@@ -637,6 +637,20 @@ pub const RV_CORE_IBEX_CFG_BASE_ADDR: usize = 0x411F0000;
 /// `RV_CORE_IBEX_CFG_BASE_ADDR + RV_CORE_IBEX_CFG_SIZE_BYTES`.
 pub const RV_CORE_IBEX_CFG_SIZE_BYTES: usize = 0x100;
 
+/// Peripheral base address for regs device on cheriot in top earlgrey.
+///
+/// This should be used with #mmio_region_from_addr to access the memory-mapped
+/// registers associated with the peripheral (usually via a DIF).
+pub const CHERIOT_REGS_BASE_ADDR: usize = 0x411B0000;
+
+/// Peripheral size for regs device on cheriot in top earlgrey.
+///
+/// This is the size (in bytes) of the peripheral's reserved memory area. All
+/// memory-mapped registers associated with this peripheral should have an
+/// address between #CHERIOT_REGS_BASE_ADDR and
+/// `CHERIOT_REGS_BASE_ADDR + CHERIOT_REGS_SIZE_BYTES`.
+pub const CHERIOT_REGS_SIZE_BYTES: usize = 0x4;
+
 /// Peripheral base address for regs device on sram_ctrl_meta in top earlgrey.
 ///
 /// This should be used with #mmio_region_from_addr to access the memory-mapped
@@ -1838,8 +1852,10 @@ pub enum AlertPeripheral {
     RomCtrl = 38,
     /// rv_core_ibex
     RvCoreIbex = 39,
+    /// cheriot
+    Cheriot = 40,
     /// sram_ctrl_meta
-    SramCtrlMeta = 40,
+    SramCtrlMeta = 41,
 }
 
 /// Alert Handler Alert Source.
@@ -1975,8 +1991,10 @@ pub enum AlertId {
     RvCoreIbexFatalHwErr = 61,
     /// rv_core_ibex_recov_hw_err
     RvCoreIbexRecovHwErr = 62,
+    /// cheriot_fatal_fault
+    CheriotFatalFault = 63,
     /// sram_ctrl_meta_fatal_error
-    SramCtrlMetaFatalError = 63,
+    SramCtrlMetaFatalError = 64,
 }
 
 impl TryFrom<u32> for AlertId {
@@ -2046,7 +2064,8 @@ impl TryFrom<u32> for AlertId {
             60 => Ok(Self::RvCoreIbexRecovSwErr),
             61 => Ok(Self::RvCoreIbexFatalHwErr),
             62 => Ok(Self::RvCoreIbexRecovHwErr),
-            63 => Ok(Self::SramCtrlMetaFatalError),
+            63 => Ok(Self::CheriotFatalFault),
+            64 => Ok(Self::SramCtrlMetaFatalError),
             _ => Err(val),
         }
     }
@@ -2056,7 +2075,7 @@ impl TryFrom<u32> for AlertId {
 ///
 /// This array is a mapping from `AlertId` to
 /// `AlertPeripheral`.
-pub const ALERT_FOR_PERIPHERAL: [AlertPeripheral; 64] = [
+pub const ALERT_FOR_PERIPHERAL: [AlertPeripheral; 65] = [
     // Uart0FatalFault -> AlertPeripheral::Uart0
     AlertPeripheral::Uart0,
     // Uart1FatalFault -> AlertPeripheral::Uart1
@@ -2183,6 +2202,8 @@ pub const ALERT_FOR_PERIPHERAL: [AlertPeripheral; 64] = [
     AlertPeripheral::RvCoreIbex,
     // RvCoreIbexRecovHwErr -> AlertPeripheral::RvCoreIbex
     AlertPeripheral::RvCoreIbex,
+    // CheriotFatalFault -> AlertPeripheral::Cheriot
+    AlertPeripheral::Cheriot,
     // SramCtrlMetaFatalError -> AlertPeripheral::SramCtrlMeta
     AlertPeripheral::SramCtrlMeta,
 ];
@@ -3146,5 +3167,5 @@ pub enum HintableClocks {
 /// MMIO region excludes any memory that is separate from the module
 /// configuration space, i.e. ROM, main SRAM, and flash are excluded but
 /// retention SRAM, spi_device memory, or usbdev memory are included.
-pub const TOP_EARLGREY_MMIO_BASE_ADDR: usize = 0x11000000;
-pub const TOP_EARLGREY_MMIO_SIZE_BYTES: usize = 0x3F000000;
+pub const TOP_EARLGREY_MMIO_BASE_ADDR: usize = 0x40000000;
+pub const TOP_EARLGREY_MMIO_SIZE_BYTES: usize = 0x10000000;

@@ -14,6 +14,7 @@
 #include "sw/device/lib/dif/autogen/dif_aes_autogen.h"
 #include "sw/device/lib/dif/autogen/dif_alert_handler_autogen.h"
 #include "sw/device/lib/dif/autogen/dif_aon_timer_autogen.h"
+#include "sw/device/lib/dif/autogen/dif_cheriot_autogen.h"
 #include "sw/device/lib/dif/autogen/dif_clkmgr_autogen.h"
 #include "sw/device/lib/dif/autogen/dif_csrng_autogen.h"
 #include "sw/device/lib/dif/autogen/dif_edn_autogen.h"
@@ -55,6 +56,7 @@ static dif_alert_handler_t alert_handler;
 static dif_adc_ctrl_t adc_ctrl_aon;
 static dif_aes_t aes;
 static dif_aon_timer_t aon_timer_aon;
+static dif_cheriot_t cheriot;
 static dif_clkmgr_t clkmgr_aon;
 static dif_csrng_t csrng;
 static dif_edn_t edn0;
@@ -108,6 +110,9 @@ static void init_peripherals(void) {
 
   base_addr = mmio_region_from_addr(TOP_EARLGREY_AON_TIMER_AON_BASE_ADDR);
   CHECK_DIF_OK(dif_aon_timer_init(base_addr, &aon_timer_aon));
+
+  base_addr = mmio_region_from_addr(TOP_EARLGREY_CHERIOT_REGS_BASE_ADDR);
+  CHECK_DIF_OK(dif_cheriot_init(base_addr, &cheriot));
 
   base_addr = mmio_region_from_addr(TOP_EARLGREY_CLKMGR_AON_BASE_ADDR);
   CHECK_DIF_OK(dif_clkmgr_init(base_addr, &clkmgr_aon));
@@ -311,6 +316,21 @@ static void trigger_alert_test(void) {
 
     // Verify that alert handler received it.
     exp_alert = (int)kTopEarlgreyAlertIdAonTimerAonFatalFault + i;
+    CHECK_DIF_OK(dif_alert_handler_alert_is_cause(
+        &alert_handler, exp_alert, &is_cause));
+    CHECK(is_cause, "Expect alert %d!", exp_alert);
+
+    // Clear alert cause register
+    CHECK_DIF_OK(dif_alert_handler_alert_acknowledge(
+        &alert_handler, exp_alert));
+  }
+
+  // Write cheriot's alert_test reg and check alert_cause.
+  for (dif_cheriot_alert_t i = 0; i < 1; ++i) {
+    CHECK_DIF_OK(dif_cheriot_alert_force(&cheriot, kDifCheriotAlertFatalFault + i));
+
+    // Verify that alert handler received it.
+    exp_alert = (int)kTopEarlgreyAlertIdCheriotFatalFault + i;
     CHECK_DIF_OK(dif_alert_handler_alert_is_cause(
         &alert_handler, exp_alert, &is_cause));
     CHECK(is_cause, "Expect alert %d!", exp_alert);

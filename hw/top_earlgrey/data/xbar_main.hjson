@@ -223,6 +223,13 @@
       req_fifo_pass: false,
       rsp_fifo_pass: false,
     },
+    { name:      "cheriot.regs",
+      type:      "device",
+      clock:     "clk_main_i",
+      reset:     "rst_main_ni",
+      req_fifo_pass: false,
+      rsp_fifo_pass: false,
+    },
     { name:      "cheriot.revbm",
       type:      "device",
       clock:     "clk_main_i",
@@ -239,7 +246,8 @@
       "flash_ctrl.core", "flash_ctrl.prim", "flash_ctrl.mem",
       "aes", "entropy_src", "csrng", "edn0", "edn1", "hmac",
       "rv_plic", "otbn", "keymgr", "kmac", "sram_ctrl_main.regs",
-      "rv_core_ibex.cfg", "sram_ctrl_meta.regs", "cheriot.revbm"
+      "rv_core_ibex.cfg", "sram_ctrl_meta.regs", "cheriot.regs",
+      "cheriot.revbm"
     ],
     rv_dm.sba: [
       "rom_ctrl.rom", "rom_ctrl.regs", "rv_dm.mem", "rv_dm.regs",
@@ -247,7 +255,8 @@
       "flash_ctrl.core", "flash_ctrl.prim", "flash_ctrl.mem",
       "aes", "entropy_src", "csrng", "edn0", "edn1", "hmac",
       "rv_plic", "otbn", "keymgr", "kmac", "sram_ctrl_main.regs",
-      "rv_core_ibex.cfg", "sram_ctrl_meta.regs", "cheriot.revbm"
+      "rv_core_ibex.cfg", "sram_ctrl_meta.regs", "cheriot.regs",
+      "cheriot.revbm"
     ],
   },
 }

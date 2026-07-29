@@ -176,6 +176,12 @@ module xbar_main_bind;
     .h2d    (tl_sram_ctrl_meta__regs_o),
     .d2h    (tl_sram_ctrl_meta__regs_i)
   );
+  bind xbar_main tlul_assert #(.EndpointType("Host")) tlul_assert_device_cheriot__regs (
+    .clk_i  (clk_main_i),
+    .rst_ni (rst_main_ni),
+    .h2d    (tl_cheriot__regs_o),
+    .d2h    (tl_cheriot__regs_i)
+  );
   bind xbar_main tlul_assert #(.EndpointType("Host")) tlul_assert_device_cheriot__revbm (
     .clk_i  (clk_main_i),
     .rst_ni (rst_main_ni),

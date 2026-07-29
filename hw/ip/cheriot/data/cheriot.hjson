@@ -12,6 +12,9 @@
   '''
   // Unique comportable IP identifier defined under KNOWN_CIP_IDS in the regtool.
   cip_id:             "47",
+  design_spec:        "../doc",
+  dv_doc:             "../doc/dv",
+  hw_checklist:       "../doc/checklist",
   version:            "1.0.0",
   life_stage:         "L1",
   design_stage:       "D1",
@@ -22,6 +25,7 @@
   ],
 
   bus_interfaces: [
+    {protocol: "tlul", direction: "device", name: "regs"},
     {protocol: "tlul", direction: "device", name: "revbm"},
     {protocol: "tlul", direction: "host", name: "cored"}
   ],
@@ -31,6 +35,12 @@
   ///////////////////////////
 
   alert_list: [
+    { name: "fatal_fault",
+      desc: '''
+            This fatal alert is triggered when an integrity fault is detected or when the tag 
+            filter's transaction FIFO reports a pointer error.
+            '''
+    }
   ],
 
   ////////////////
@@ -87,6 +97,49 @@
   //////////////
 
   features: [
+    { name: "CHERIOT.TAG_SPLIT",
+      desc: '''
+        A data access from the core is split into the data access towards the interconnect and a
+        capability tag access towards the meta SRAM. Their responses are joined so that data and
+        tag are returned together.
+      '''
+    },
+    { name: "CHERIOT.TAG_READ",
+      desc: '''
+        On a hinted capability load, the tag bit of the addressed capability is looked up in the 
+        meta SRAM and returned.
+      '''
+    },
+    { name: "CHERIOT.TAG_WRITE_RMW",
+      desc: '''
+        Because tags are stored at bit granularity, a write performs a read-modify-write on the
+        addressed meta SRAM word.
+      '''
+    },
+    { name: "CHERIOT.TAG_CLEAR_ON_DATA_WRITE",
+      desc: '''
+        Any non-capability write clears the tag bit of the addressed location, so that data stores
+        cannot modify a valid capability.
+      '''
+    },
+    { name: "CHERIOT.REVOCATION_BITMAP",
+      desc: '''
+        The revocation bitmap is exposed as a memory window on the `revbm` device interface and is
+        read by the core's TRVK filter through the `corerevbm` port.
+      '''
+    },
+    { name: "CHERIOT.ACCESS_CHECK",
+      desc: '''
+        Every meta SRAM access is checked against the region and the operations permitted for its
+        originating port.
+      '''
+    },
+    { name: "CHERIOT.MODE_GATING",
+      desc: '''
+        In ePMP mode the entire meta SRAM is inaccessible through all three ports of the
+        subsystem. No tag lookups are issued.
+      '''
+    },
   ],
 
   /////////////////////////////
@@ -154,6 +207,31 @@
   /////////////////////
 
   countermeasures: [
+    { name: "BUS.INTEGRITY",
+      desc: '''
+        End-to-end bus integrity between the Ibex lockstep  and the storage cells.
+      '''
+    },
+    { name: "LOGIC.SHADOW",
+      desc: '''
+        The CHERIoT subsystem is instantiated in lockstep.
+      '''
+    },
+    { name: "MEM.SW_NOACCESS",
+      desc: '''
+        The capability tag store is not memory mapped.
+      '''
+    },
+    { name: "INTERSIG.MUBI",
+      desc: '''
+        The CHERIoT mode enable is multi-bit encoded.
+      '''
+    },
+    { name: "CTR.REDUN",
+      desc: '''
+        The tag filter's outstanding-transaction FIFO uses redundantly encoded read and write pointers.
+      '''
+    },
   ],
 
   ///////////
@@ -162,5 +240,15 @@
 
   memory: {
     revbm: {}
+  }
+
+  ///////////////
+  // Registers //
+  ///////////////
+
+  regwidth: "32",
+  registers: {
+    // No additional registers
+    regs: []
   }
 }

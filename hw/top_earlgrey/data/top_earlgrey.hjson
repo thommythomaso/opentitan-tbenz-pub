@@ -246,7 +246,7 @@
             "sram_ctrl_meta.regs"
             "rom_ctrl.regs",
             "rv_core_ibex",
-            "cheriot.revbm"
+            "cheriot.regs"
           ]
         }
       ]
@@ -1061,9 +1061,8 @@
         MetaSramBaseAddr: "32'h1100_0000",
       },
       base_addrs: {
-        revbm: {
-          hart: "0x11000000"
-        },
+        regs:  {hart: "0x411B0000"},
+        revbm: {hart: "0x11000000"},
       },
       memory: {
         revbm: {
@@ -1372,8 +1371,9 @@
       'rstmgr_aon.sw_rst_req' : ['pwrmgr_aon.sw_rst_req'],
 
       // CHERIoT connections
-      'cheriot.meta_sram_tl'  : ['sram_ctrl_meta.ram_tl'],
-      'cheriot.cored_tag_d2h' : ['rv_core_ibex.cored_tag_d2h'],
+      'cheriot.meta_sram_tl'     : ['sram_ctrl_meta.ram_tl'],
+      'cheriot.cored_tag_d2h'    : ['rv_core_ibex.cored_tag_d2h'],
+      'rv_core_ibex.cheriot_ena' : ['cheriot.cheriot_ena'],
     },
 
     // top is to connect to top net/struct.

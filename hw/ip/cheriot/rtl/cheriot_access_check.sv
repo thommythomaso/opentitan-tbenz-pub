@@ -48,6 +48,7 @@ module cheriot_access_check #(
   // Access Checker //
   ////////////////////
 
+  // SEC_CM: MEM.SW_NOACCESS, INTERSIG.MUBI
   always_comb begin: proc_allow_forward
 
     // Default: do not forward

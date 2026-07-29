@@ -835,6 +835,23 @@
  */
 #define TOP_EARLGREY_RV_CORE_IBEX_CFG_SIZE_BYTES 0x100
 /**
+ * Peripheral base address for regs device on cheriot in top earlgrey.
+ *
+ * This should be used with #mmio_region_from_addr to access the memory-mapped
+ * registers associated with the peripheral (usually via a DIF).
+ */
+#define TOP_EARLGREY_CHERIOT_REGS_BASE_ADDR 0x411B0000
+
+/**
+ * Peripheral size for regs device on cheriot in top earlgrey.
+ *
+ * This is the size (in bytes) of the peripheral's reserved memory area. All
+ * memory-mapped registers associated with this peripheral should have an
+ * address between #TOP_EARLGREY_CHERIOT_REGS_BASE_ADDR and
+ * `TOP_EARLGREY_CHERIOT_REGS_BASE_ADDR + TOP_EARLGREY_CHERIOT_REGS_SIZE_BYTES`.
+ */
+#define TOP_EARLGREY_CHERIOT_REGS_SIZE_BYTES 0x4
+/**
  * Peripheral base address for regs device on sram_ctrl_meta in top earlgrey.
  *
  * This should be used with #mmio_region_from_addr to access the memory-mapped
@@ -859,8 +876,8 @@
  * configuration space, i.e. ROM, main SRAM, and flash are excluded but
  * retention SRAM, spi_device memory, or usbdev memory are included.
  */
-#define TOP_EARLGREY_MMIO_BASE_ADDR 0x11000000
-#define TOP_EARLGREY_MMIO_SIZE_BYTES 0x3F000000
+#define TOP_EARLGREY_MMIO_BASE_ADDR 0x40000000
+#define TOP_EARLGREY_MMIO_SIZE_BYTES 0x10000000
 
 #endif  // __ASSEMBLER__
 

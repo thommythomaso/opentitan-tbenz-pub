@@ -183,6 +183,12 @@
     }
     { struct: "tl"
       type:   "req_rsp"
+      name:   "tl_cheriot__regs"
+      act:    "req"
+      package: "tlul_pkg"
+    }
+    { struct: "tl"
+      type:   "req_rsp"
       name:   "tl_cheriot__revbm"
       act:    "req"
       package: "tlul_pkg"

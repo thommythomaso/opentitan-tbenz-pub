@@ -6,7 +6,17 @@
 
 module cheriot_tag_filter #(
   // The number of outstanding TL transaction the IP supports
-  parameter int unsigned NumOutstanding = 32'd4
+  parameter int unsigned NumOutstanding      = 32'd4,
+  // TL-UL address type
+  parameter type   addr_t                    = logic [top_pkg::TL_AW-1:0],
+  // Memory regions that have a capability tag store
+  parameter addr_t MainSramBaseAddr          = 'h1000_0000,
+  parameter addr_t MainSramTopAddr           = 'h1002_0000,
+  parameter addr_t NvmBaseAddr               = 'h2000_0000,
+  parameter addr_t NvmTopAddr                = 'h2020_0000,
+  // Base addresses of the corresponding tag regions in the meta SRAM
+  parameter addr_t MetaMainSramTagBase       = 'h0,
+  parameter addr_t MetaNvmTagBase            = 'h0
 )(
   input clk_i,
   input rst_ni,
@@ -23,12 +33,15 @@ module cheriot_tag_filter #(
   // Meta port
   output tlul_pkg::tl_h2d_t tl_m_o,
   output logic              tag_m_o,
+  output logic  [4:0]       bit_sel_m_o,
   input  tlul_pkg::tl_d2h_t tl_m_i,
   input  logic              tag_m_i,
 
   // Host port
   output tlul_pkg::tl_h2d_t tl_h_o,
-  input  tlul_pkg::tl_d2h_t tl_h_i
+  input  tlul_pkg::tl_d2h_t tl_h_i,
+
+  output logic fifo_err_o
 );
 
   ///////////
@@ -40,7 +53,15 @@ module cheriot_tag_filter #(
     logic cap_store;
     logic cap;
     logic aligned;
+    logic has_tag;
   } req_rsp_meta_t;
+
+  // The fields of an access address that locate its capability tag.
+  typedef struct packed {
+    logic [31:8] meta_word;
+    logic  [7:3] bit_sel;
+    logic  [2:0] rsvd;
+  } meta_addr_t;
 
 
   /////////////
@@ -84,6 +105,14 @@ module cheriot_tag_filter #(
   logic tl_d_is_write;
   logic tl_d_is_aligned;
 
+  // Offset of the access within its tagged region, and whether it is in one at all
+  meta_addr_t addr_stem;
+  addr_t      meta_addr;
+  logic       addr_tagged;
+
+  // Unused address signals
+  logic unused_addr;
+
 
   //////////
   // Fork //
@@ -94,13 +123,39 @@ module cheriot_tag_filter #(
                            tl_d_i.a_opcode == tlul_pkg::PutPartialData;
   assign tl_d_is_aligned = !tl_d_i.a_address[2];
 
+  ///////////////////////
+  // Address Remapping //
+  ///////////////////////
+
+  // Check if access points to a capability-enabled region
+  always_comb begin: proc_address_remap
+    // defaults (an access outside every tagged region has no metadata)
+    addr_stem   = '0;
+    meta_addr   = '0;
+    addr_tagged = 1'b0;
+
+    if(tl_d_i.a_address >= MainSramBaseAddr && tl_d_i.a_address < MainSramTopAddr) begin
+      addr_stem   = tl_d_i.a_address - MainSramBaseAddr;
+      meta_addr   = MetaMainSramTagBase + (addr_t'(addr_stem.meta_word) << 32'd2);
+      addr_tagged = 1'b1;
+    end else if(tl_d_i.a_address >= NvmBaseAddr && tl_d_i.a_address < NvmTopAddr) begin
+      addr_stem   = tl_d_i.a_address - NvmBaseAddr;
+      meta_addr   = MetaNvmTagBase + (addr_t'(addr_stem.meta_word) << 32'd2);
+      addr_tagged = 1'b1;
+    end
+  end
+
+  assign bit_sel_m_o = addr_stem.bit_sel;
+  assign unused_addr = ^addr_stem.rsvd;
+
   // We need to perform a lookup on 64-bit-aligned reads where the host hints
   // us a valid capability load or on any write. A lookup is only required if CHERIoT is enabled.
   assign require_lookup = prim_mubi_pkg::mubi4_test_true_strict(cheriot_ena_i) ?
-                          (tl_d_is_read   &&                                     // Read,
-                          tl_d_is_aligned &&                                     // 64-bit-aligned,
-                          tag_d_i)        ||                                     // hinted cap
-                          tl_d_is_write                                        : // or write
+                          addr_tagged       &&                                   // CHERIoT dev,
+                          ((tl_d_is_read    &&                                   // and: Read,
+                            tl_d_is_aligned &&                                   // 64-bit-aligned,
+                            tag_d_i)        ||                                   // hinted cap
+                            tl_d_is_write)                                     : // or write
                           1'b0;
 
   // We only fork the meta channel if a lookup is required
@@ -127,11 +182,13 @@ module cheriot_tag_filter #(
   assign meta_req = '{
     cap:       tag_d_i,
     aligned:   tl_d_is_aligned,
-    cap_store: tl_d_is_write
+    cap_store: tl_d_is_write,
+    has_tag:   addr_tagged
   };
 
+  // SEC_CM: CTR.REDUN
   prim_fifo_sync #(
-    .Width(32'd3),
+    .Width(32'd4),
     .Pass(1'b0),
     .Depth(NumOutstanding),
     .NeverClears(1'b1),
@@ -148,7 +205,7 @@ module cheriot_tag_filter #(
     .rdata_o ( meta_rsp       ),
     .full_o  (                ),
     .depth_o (                ),
-    .err_o   (                )
+    .err_o   ( fifo_err_o     )
   );
 
 
@@ -158,8 +215,9 @@ module cheriot_tag_filter #(
 
   // We need to join in the response from the meta SRAM if CHERIoT is enabled
   // Ibex hints capability reads thus a join is requested through the `meta_rsp.cap` signal.
-  assign require_join = prim_mubi_pkg::mubi4_test_true_strict(cheriot_ena_i)     ?
-                        meta_rsp.cap_store || (meta_rsp.cap && meta_rsp.aligned) :
+  assign require_join = prim_mubi_pkg::mubi4_test_true_strict(cheriot_ena_i)       ?
+                        meta_rsp.has_tag &&
+                        (meta_rsp.cap_store || (meta_rsp.cap && meta_rsp.aligned)) :
                         1'b0;
 
   stream_join_dynamic #(
@@ -184,8 +242,8 @@ module cheriot_tag_filter #(
     tag_d_o = tag_d_q;
     if(tl_d_o.d_valid && tl_d_i.d_ready) begin
       if(meta_rsp.aligned) begin
-        tag_d_o = tag_m_i;
-        tag_d_d = tag_m_i;
+        tag_d_o = meta_rsp.has_tag && tag_m_i;
+        tag_d_d = meta_rsp.has_tag && tag_m_i;
       end else begin
         tag_d_d = 1'b0;
       end
@@ -211,9 +269,12 @@ module cheriot_tag_filter #(
     tl_h_o.a_valid = tl_h_req_valid;
     tl_h_o.d_ready = tl_h_rsp_ready;
 
-    tl_m_o         = tl_d_i;
-    tl_m_o.a_valid = tl_m_req_valid;
-    tl_m_o.d_ready = tl_m_rsp_ready;
+    // We inject the meta address here
+    tl_m_o                 = tl_d_i;
+    tl_m_o.a_address       = meta_addr;
+    tl_m_o.a_user.cmd_intg = tlul_pkg::get_cmd_intg(tl_m_o);
+    tl_m_o.a_valid         = tl_m_req_valid;
+    tl_m_o.d_ready         = tl_m_rsp_ready;
   end
 
   // We disregard all of the meta SRAM response except for the tag bit and the error bit

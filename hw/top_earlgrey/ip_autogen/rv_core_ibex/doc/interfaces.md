@@ -69,6 +69,7 @@ Referring to the [Comportable guideline for peripheral device functionality](htt
 | RV_CORE_IBEX.EXCEPTION.CTRL_FLOW.GLOBAL_ESC | A mechanism to detect and act on double faults. Global escalation sends a fatal alert when a double fault is seen.                                                                               |
 | RV_CORE_IBEX.ICACHE.MEM.SCRAMBLE            | ICache memory scrambling.                                                                                                                                                                        |
 | RV_CORE_IBEX.ICACHE.MEM.INTEGRITY           | ICache memory integrity checking.                                                                                                                                                                |
+| RV_CORE_IBEX.CHERIOT_SWITCH.FSM.SPARSE      | The write-once ePMP/CHERIoT execution mode switch FSM is sparsely encoded.                                                                                                                       |
 
 
 <!-- END CMDGEN -->
